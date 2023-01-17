@@ -129,11 +129,15 @@ inline int reject_bad_vancs(vector<vector<vector<double>>>& vancs, vector<vector
     auto iter= vancs.begin();
     int i = 0;
     while (iter != vancs.end()) {
+
         if (mean_sq_deviation(*iter, ref) > crit_dev) {
             vancs.erase(iter); 
             i++;
         }
-        else  iter++;
+        else {
+            iter++;
+            //cout <<"std dev:" << mean_sq_deviation(*iter, ref) << endl;
+        }
     }
 
     return i;
@@ -216,21 +220,32 @@ int main()
     SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
     SetThreadPriority(GetCurrentProcess(), THREAD_PRIORITY_TIME_CRITICAL);
     cout << GetPriorityClass(GetCurrentProcess()) << endl;
+
     cout << "Введите номер первой кривой:" << endl;
-    int start = 2;
-    cin >> start;
+    int start = 5;
+    //cin >> start;
+
     cout << "Введите номер последней кривой:" << endl;
-    int stop = 99;
-    cin >> stop;
+    int stop = 35;
+    //cin >> stop;
+
     cout << "Введите сдвиг фазы напряжения, в точках:" << endl;
-    int phase_shift_cur = 18;
-    cin >> phase_shift_cur;
+    int phase_shift_cur = 25;
+    //cin >> phase_shift_cur;
+
     cout << "Введите сдвиг фазы шума, в точках:" << endl;
-    int phase_shift_n = 12;
-    cin >> phase_shift_n;
-    int period = 1000;
-    double crit_dev = 0.03;
+    int phase_shift_n = 10;
+    //cin >> phase_shift_n;
+  
+    cout << "Введите ожидаемое количество точек:" << endl;
     int p_num = 50;
+    //cin >> p_num;
+   
+    cout << "Введите критическое отклонение:" << endl;
+    double crit_dev = 0.03;
+    //cin >> crit_dev;
+
+    int period = 1000;
     string name = "VANC_";
     vector<vector<vector<double>>> fw_vancs, bw_vancs;
     Timer total_tmr;
@@ -238,6 +253,7 @@ int main()
 #pragma omp parallel for 
     for (int i = start; i < stop; i++)
     {
+
         Timer tmr;
         tmr.set_to_zero();
         int size = -1;
@@ -251,7 +267,7 @@ int main()
         }
         file.close();
         //printf("%i VAC doing by %i thread. Size of file %i \n", i, omp_get_thread_num(), size);
-
+       
         file.open(name + to_string(i) + ".dat");
                 
         vector<vector<double> > data(3, vector<double>(size, 0));
