@@ -222,22 +222,22 @@ int main()
     cout << GetPriorityClass(GetCurrentProcess()) << endl;
 
     cout << "Введите номер первой кривой:" << endl;
-    int start = 5;
+    int start = 1;
     cin >> start;
 
     cout << "Введите номер последней кривой:" << endl;
-    int stop = 35;
+    int stop =10;
     cin >> stop;
 
-    cout << "Введите максимальное количество точек в файле:" << endl;
+    //cout << "Введите максимальное количество точек в файле:" << endl;
     int cnt = 2000000;
     //cin >> cnt;
 
-    cout << "Введите сдвиг фазы напряжения, в точках:" << endl;
+    //cout << "Введите сдвиг фазы напряжения, в точках:" << endl;
     int phase_shift_cur = 25;
     //cin >> phase_shift_cur;
 
-    cout << "Введите сдвиг фазы шума, в точках:" << endl;
+    //cout << "Введите сдвиг фазы шума, в точках:" << endl;
     int phase_shift_n = 10;
     //cin >> phase_shift_n;
   
@@ -270,9 +270,11 @@ int main()
         FILE* fileA;
         FILE* fileN;
 
-        fopen_s(&fileV, (filename + "V" + filetype).data(), "rb");
-        fopen_s(&fileA, (filename + "A" + filetype).data(), "rb");
-        fopen_s(&fileN, (filename + "N" + filetype).data(), "rb");
+        cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+        cout << filename + to_string(i)  + filetype << endl;
+        cout << "open voltage file: " << fopen_s(&fileV, (filename + to_string(i) + "V" + filetype).data(), "rb") << endl;
+        cout << "open current file: " << fopen_s(&fileA, (filename + to_string(i) + "A" + filetype).data(), "rb") << endl;
+        cout << "open noise file: " << fopen_s(&fileN, (filename + to_string(i) + "N" + filetype).data(), "rb") << endl;
     
         std::vector<float> Vbuf(cnt); // underlying storage of std::vector is also an array
         std::vector<float> Abuf(cnt); // underlying storage of std::vector is also an array
