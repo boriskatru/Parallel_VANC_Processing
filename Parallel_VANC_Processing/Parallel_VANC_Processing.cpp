@@ -17,13 +17,13 @@
 
 using namespace std;
 
-inline double avrg(vector<double>& vec, int start, int len) {
+inline float avrg(vector<float>& vec, int start, int len) {
     //cout << reduce(vec.begin() + start, vec.begin() + start + len) / len << endl;
     return (reduce(vec.begin() + start, vec.begin() + start + len) / len);
 }
 
-inline int local_max(vector<double>& vec, int start = 0,  int len = INT_MAX) {
-    double max_ = DBL_MIN;    
+inline int local_max(vector<float>& vec, int start = 0,  int len = INT_MAX) {
+    float max_ = DBL_MIN;    
     int max_pos = 0;
     min(len, (int)vec.size());
     int length = min(len, (int)vec.size());;
@@ -36,8 +36,8 @@ inline int local_max(vector<double>& vec, int start = 0,  int len = INT_MAX) {
     }
     return max_pos;
 }
-inline int local_min(vector<double>& vec, int start = 0, int len = INT_MAX) {
-    double min_ = DBL_MAX;
+inline int local_min(vector<float>& vec, int start = 0, int len = INT_MAX) {
+    float min_ = DBL_MAX;
     int min_pos = 0;
     int length = min(len, (int)vec.size());
     for (int pos = start; pos < start + length; pos++)   
@@ -50,9 +50,9 @@ inline int local_min(vector<double>& vec, int start = 0, int len = INT_MAX) {
     return min_pos;
 }
 
-inline pair<int, double> find_nearest(vector<double>& vec, double val) {
+inline pair<int, float> find_nearest(vector<float>& vec, float val) {
     int pos;
-    double dev = DBL_MAX;
+    float dev = DBL_MAX;
     int size = vec.size();
     
     for (int i = 0; i < size; i++) {
@@ -63,9 +63,9 @@ inline pair<int, double> find_nearest(vector<double>& vec, double val) {
     }
     return make_pair(pos, dev);
 }
-inline  vector<vector<double>>  decimate_vanc(vector<vector<double>>& data, int p_num) {
-    vector<vector<double>>  data_new(3, vector<double>(p_num, 0));
-    double range = abs(data[0][0] - data[0][data[0].size()-1]);   
+inline  vector<vector<float>>  decimate_vanc(vector<vector<float>>& data, int p_num) {
+    vector<vector<float>>  data_new(3, vector<float>(p_num, 0));
+    float range = abs(data[0][0] - data[0][data[0].size()-1]);   
     int step = data[0].size() / p_num;
   /*  if (!is_fw) reverse(data.begin(), data.end());*/
 
@@ -78,10 +78,10 @@ inline  vector<vector<double>>  decimate_vanc(vector<vector<double>>& data, int 
 
     return data_new;
 }
-inline vector<vector<double>> avrg_curve(vector<vector<vector<double>>>& data) {
+inline vector<vector<float>> avrg_curve(vector<vector<vector<float>>>& data) {
     int VAC_cnt = data.size();
     int VAC_size = data[0][0].size();
-    vector<vector<double>> avrg_vac(3, vector<double>(VAC_size, 0));
+    vector<vector<float>> avrg_vac(3, vector<float>(VAC_size, 0));
     for (int k = 0; k < VAC_size; k++) {
         for (int i = 0; i < VAC_cnt; i++) {
             avrg_vac[0][k] += data[i][0][k];
@@ -95,7 +95,7 @@ inline vector<vector<double>> avrg_curve(vector<vector<vector<double>>>& data) {
     return avrg_vac;
 }
 
-inline double interpolate(vector<vector<double>>& vac, double target) {
+inline float interpolate(vector<vector<float>>& vac, float target) {
     auto nearest = find_nearest(vac[0], target);
     int n_max, n_min;
     if (nearest.second == 0) return vac[1][nearest.first];
@@ -107,25 +107,25 @@ inline double interpolate(vector<vector<double>>& vac, double target) {
         n_min = nearest.first;
         n_max = min(n_min + 1, (int)vac[0].size()-1);
     }
-    double dev = target - vac[0][n_min];
-    double step= vac[0][n_max]- vac[0][n_min];
+    float dev = target - vac[0][n_min];
+    float step= vac[0][n_max]- vac[0][n_min];
     //cout << step << "  " << dev << endl;
     if (step!=0)
         return (dev * vac[1][n_max] + (step - dev) * vac[1][n_min]) / 2 / step;
     else return (vac[1][n_max] +  vac[1][n_min]) / 2 ;
 }
-inline double mean_sq_deviation(vector<vector<double>>& vac, vector<vector<double>>& ref) {
+inline float mean_sq_deviation(vector<vector<float>>& vac, vector<vector<float>>& ref) {
 
     int VAC_size = vac[0].size();
-    double deviation = 0;
-    double tmp = 0;
+    float deviation = 0;
+    float tmp = 0;
     for (int k = 0; k < VAC_size; k++) {
         tmp = interpolate(vac, ref[0][k]) - ref[1][k];
         deviation += tmp * tmp;
     }
     return deviation/ VAC_size;
 }
-inline int reject_bad_vancs(vector<vector<vector<double>>>& vancs, vector<vector<double>>& ref, double crit_dev) {
+inline int reject_bad_vancs(vector<vector<vector<float>>>& vancs, vector<vector<float>>& ref, float crit_dev) {
     auto iter= vancs.begin();
     int i = 0;
     while (iter != vancs.end()) {
@@ -142,7 +142,7 @@ inline int reject_bad_vancs(vector<vector<vector<double>>>& vancs, vector<vector
 
     return i;
 }
-inline pair<vector<vector<vector<double>>>, vector<vector<vector<double>>>> process_vancs(vector<vector<double>>& data, double crit_dev,int phase_shift_cur = 20, int phase_shift_n = 15, int period=1000, int p_num = 100) {
+inline pair<vector<vector<vector<float>>>, vector<vector<vector<float>>>> process_vancs(vector<vector<float>>& data, float crit_dev, int phase_shift_cur = 20, int phase_shift_n = 15, int period=1000, int p_num = 100) {
     int min_1pos = local_min(data[0], 0, 9 * period / 10);
     if (min_1pos == 0) min_1pos = period;
     int max_1pos = local_max(data[0], 0, 9 * period / 10);
@@ -153,10 +153,10 @@ inline pair<vector<vector<vector<double>>>, vector<vector<vector<double>>>> proc
     printf(" %i thread.  Start: %i      Start val: %f \n",  omp_get_thread_num(), start, data[0][start]);
 
     int VAC_cnt = floor((data[0].size() - start) / period);
-    vector<vector<double>> bw_tmp(3, vector<double>(period / 2, 0));
-    vector<vector<double>> fw_tmp(3, vector<double>(period / 2, 0));
-    vector<vector<vector<double>>> bw_vancs(VAC_cnt, vector<vector<double>>(3, vector<double>(p_num, 0)));
-    vector<vector<vector<double>>> fw_vancs(VAC_cnt, vector<vector<double>>(3, vector<double>(p_num, 0)));
+    vector<vector<float>> bw_tmp(3, vector<float>(period / 2, 0));
+    vector<vector<float>> fw_tmp(3, vector<float>(period / 2, 0));
+    vector<vector<vector<float>>> bw_vancs(VAC_cnt, vector<vector<float>>(3, vector<float>(p_num, 0)));
+    vector<vector<vector<float>>> fw_vancs(VAC_cnt, vector<vector<float>>(3, vector<float>(p_num, 0)));
     int offset_fw = (fw_first ? 0 : period / 2) + start;
     int offset_bw = (fw_first ? period / 2 : 0) + start;
     for (int i = 0; i < VAC_cnt; i++) {
@@ -193,7 +193,7 @@ inline pair<vector<vector<vector<double>>>, vector<vector<vector<double>>>> proc
 
     return make_pair(fw_vancs, bw_vancs);
 }
-inline void print_avrg_VANCS(pair<vector<vector<vector<double>>>, vector<vector<vector<double>>>>& VANCS) {
+inline void print_avrg_VANCS(pair<vector<vector<vector<float>>>, vector<vector<vector<float>>>>& VANCS) {
     auto avrg_fw = avrg_curve(VANCS.first);
     auto avrg_bw = avrg_curve(VANCS.second);
     ofstream  fw_vanc, bw_vanc;
@@ -223,11 +223,15 @@ int main()
 
     cout << "Введите номер первой кривой:" << endl;
     int start = 5;
-    //cin >> start;
+    cin >> start;
 
     cout << "Введите номер последней кривой:" << endl;
     int stop = 35;
-    //cin >> stop;
+    cin >> stop;
+
+    cout << "Введите максимальное количество точек в файле:" << endl;
+    int cnt = 2000000;
+    //cin >> cnt;
 
     cout << "Введите сдвиг фазы напряжения, в точках:" << endl;
     int phase_shift_cur = 25;
@@ -237,17 +241,18 @@ int main()
     int phase_shift_n = 10;
     //cin >> phase_shift_n;
   
-    cout << "Введите ожидаемое количество точек:" << endl;
+    cout << "Введите желаемое количество точек на  обработанной кривой:" << endl;
     int p_num = 50;
-    //cin >> p_num;
+    cin >> p_num;
    
     cout << "Введите критическое отклонение:" << endl;
-    double crit_dev = 0.03;
-    //cin >> crit_dev;
+    float crit_dev = 0.03;
+    cin >> crit_dev;
 
     int period = 1000;
-    string name = "VANC_";
-    vector<vector<vector<double>>> fw_vancs, bw_vancs;
+    string filename = "VANC_";
+    string filetype = ".bin";
+    vector<vector<vector<float>>> fw_vancs, bw_vancs;
     Timer total_tmr;
     total_tmr.set_to_zero();
 #pragma omp parallel for 
@@ -256,30 +261,39 @@ int main()
 
         Timer tmr;
         tmr.set_to_zero();
-        int size = -1;
-        string line;
-        std::ifstream file;
-        file.open(name + to_string(i)+".dat");       
-        while (!file.eof())
-        {
-            std:getline(file, line);
-            size++;
-        }
-        file.close();
-        //printf("%i VAC doing by %i thread. Size of file %i \n", i, omp_get_thread_num(), size);
-       
-        file.open(name + to_string(i) + ".dat");
-                
-        vector<vector<double> > data(3, vector<double>(size, 0));
+        
+
+
+        
+
+        FILE* fileV;
+        FILE* fileA;
+        FILE* fileN;
+
+        fopen_s(&fileV, (filename + "V" + filetype).data(), "rb");
+        fopen_s(&fileA, (filename + "A" + filetype).data(), "rb");
+        fopen_s(&fileN, (filename + "N" + filetype).data(), "rb");
+    
+        std::vector<float> Vbuf(cnt); // underlying storage of std::vector is also an array
+        std::vector<float> Abuf(cnt); // underlying storage of std::vector is also an array
+        std::vector<float> Nbuf(cnt); // underlying storage of std::vector is also an array
+        std::size_t size = std::fread(Vbuf.data(), sizeof Vbuf[0], Vbuf.size(), fileV);
+        std::fread(Abuf.data(), sizeof Abuf[0], Abuf.size(), fileA);
+        std::fread(Nbuf.data(), sizeof Nbuf[0], Nbuf.size(), fileN);
+        vector<vector<float> > data(3, vector<float>(size, 0));
 
         for (int i = 0; i < size; i++) {
-            file >> data[0][i];
-            file >> data[1][i];
-            file >> data[2][i];
+            data[0][i] = Vbuf[i];
+            data[1][i] = Abuf[i];
+            data[2][i] = Nbuf[i];
         }
+        fclose(fileV);
+        fclose(fileA);
+        fclose(fileN);
+
         auto VANCS = process_vancs(data, crit_dev, phase_shift_cur, phase_shift_n, period, p_num);
         //system("pause");
-        file.close();
+       
         fw_vancs.insert(fw_vancs.end(), VANCS.first.begin(), VANCS.first.end());
         bw_vancs.insert(bw_vancs.end(), VANCS.second.begin(), VANCS.second.end());
         printf("%i VAC done by %i thread. Time per file %f s  FW count: %i    BW count: %i\n", i, omp_get_thread_num(), tmr.get_loop_interval()/1000000
