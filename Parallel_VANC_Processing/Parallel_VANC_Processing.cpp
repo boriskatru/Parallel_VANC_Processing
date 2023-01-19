@@ -283,7 +283,7 @@ int main()
         std::fread(Abuf.data(), sizeof Abuf[0], Abuf.size(), fileA);
         std::fread(Nbuf.data(), sizeof Nbuf[0], Nbuf.size(), fileN);
         vector<vector<float> > data(3, vector<float>(size, 0));
-
+        cout << "file length: " << size << endl;
         for (int i = 0; i < size; i++) {
             data[0][i] = Vbuf[i];
             data[1][i] = Abuf[i];
