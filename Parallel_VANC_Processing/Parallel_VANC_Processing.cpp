@@ -177,7 +177,7 @@ inline vector<vector<float>> avrg_interpl_curve(vector<vector<vector<float>>>& d
 
 inline float mean_sq_deviation(vector<vector<float>>& vac, vector<vector<float>>& ref) {
 
-    int VAC_size = vac[0].size();
+    int VAC_size = ref[0].size();
     float deviation = 0;
     float tmp = 0;
     for (int k = 0; k < VAC_size; k++) {
@@ -203,7 +203,7 @@ inline int reject_bad_vancs(vector<vector<vector<float>>>& vancs, vector<vector<
 
     return i;
 }
-inline pair<vector<vector<vector<float>>>, vector<vector<vector<float>>>> process_vancs(vector<vector<float>>& data, float crit_dev, int phase_shift_cur = 20, int phase_shift_n = 15, int period=1000, int p_num = 100) {
+inline pair<vector<vector<float>>, vector<vector<float>>> process_vancs(vector<vector<float>>& data, float crit_dev, int phase_shift_cur = 20, int phase_shift_n = 15, int period = 1000, int p_num = 100, int VAC_num = 1, Timer& tmr = *new Timer) {
     int min_1pos = local_min(data[0], 0, 9 * period / 10);
     if (min_1pos == 0) min_1pos = period;
     int max_1pos = local_max(data[0], 0, 9 * period / 10);
@@ -243,6 +243,10 @@ inline pair<vector<vector<vector<float>>>, vector<vector<vector<float>>>> proces
     auto avrg_fw = avrg_curve(fw_vancs);
     auto avrg_bw = avrg_curve(bw_vancs);
 
+
+
+
+
     std::cout <<"Start fw_bw deviation: " << mean_sq_deviation(avrg_bw, avrg_fw) << endl;
 
     /*reject_bad_vancs(fw_vancs, avrg_fw, 2 * crit_dev);
@@ -253,12 +257,13 @@ inline pair<vector<vector<vector<float>>>, vector<vector<vector<float>>>> proces
 
     reject_bad_vancs(fw_vancs, avrg_fw, crit_dev);
     reject_bad_vancs(bw_vancs, avrg_bw, crit_dev);
-
+   
     avrg_fw = avrg_curve(fw_vancs);
     avrg_bw = avrg_curve(bw_vancs);
     std::cout << "Finish fw_bw deviation: " << mean_sq_deviation(avrg_bw, avrg_fw) << endl;
-
-    return make_pair(fw_vancs, bw_vancs);
+    printf("%i VAC done by thread %i. Time per file %f s   FW count: %i    BW count: %i\n", VAC_num, omp_get_thread_num(), tmr.get_loop_interval() / 1000000
+        , fw_vancs.size(), bw_vancs.size());
+    return make_pair(avrg_fw, avrg_bw);
 }
 inline void print_avrg_VANCS(pair<vector<vector<vector<float>>>, vector<vector<vector<float>>>>& VANCS, int p_num) {
     auto avrg_fw = avrg_interpl_curve(VANCS.first, p_num);
@@ -303,7 +308,7 @@ int main()
     cout << "Введите сдвиг фазы напряжения, в точках:" << endl;
     int phase_shift_cur = 13;
     cin >> phase_shift_cur;
-    if (phase_shift_cur == 0) phase_shift_cur = 15;
+    if (phase_shift_cur == 0) phase_shift_cur = 12;
 
     cout << "Введите сдвиг фазы шума, в точках:" << endl;
     int phase_shift_n = 7;
@@ -311,14 +316,14 @@ int main()
     if (phase_shift_n == 0)  phase_shift_n = 7;
 
     cout << "Введите желаемое количество точек на  обработанной кривой:" << endl;
-    int p_num = 100;
+    int p_num = 50;
     cin >> p_num;
-    if (p_num == 0)  p_num = 100;
+    if (p_num == 0)  p_num = 50;
 
     cout << "Введите критическое отклонение:" << endl;
-    float crit_dev = 0.03;
+    float crit_dev = 0.08;
     cin >> crit_dev;
-    if (crit_dev == 0)  crit_dev = 0.06;
+    if (crit_dev == 0)  crit_dev = 0.08;
 
     cout << "Введите частоту баяса:" << endl;
     int freq = 250;
@@ -367,21 +372,20 @@ int main()
         fclose(fileA);
         fclose(fileN);
 
-        auto VANCS = process_vancs(data, crit_dev, phase_shift_cur, phase_shift_n, period, 4 * p_num);
+        auto VANCS = process_vancs(data, crit_dev, phase_shift_cur, phase_shift_n, period, 4 * p_num, i, tmr);
         //system("pause");
        
-        fw_vancs.insert(fw_vancs.end(), VANCS.first.begin(), VANCS.first.end());
-        bw_vancs.insert(bw_vancs.end(), VANCS.second.begin(), VANCS.second.end());
-        printf("%i VAC done by thread %i. Time per file %f s   FW count: %i    BW count: %i\n", i, omp_get_thread_num(), tmr.get_loop_interval()/1000000
-                                                                                                                , VANCS.first.size(), VANCS.second.size());
+        fw_vancs.insert(fw_vancs.end(), VANCS.first);
+        bw_vancs.insert(bw_vancs.end(), VANCS.second);
+      
     }
-    auto avrg_fw = avrg_curve(fw_vancs);
+    auto avrg_fw = avrg_interpl_curve(fw_vancs, 4 * p_num);
+    auto avrg_bw = avrg_interpl_curve(bw_vancs, 4 * p_num);
+    //auto avrg_fw = avrg_curve(fw_vancs);
     /*reject_bad_vancs(fw_vancs, avrg_fw, 2 * crit_dev);
     avrg_fw = avrg_curve(fw_vancs);*/
     reject_bad_vancs(fw_vancs, avrg_fw, crit_dev);
 
-
-    auto avrg_bw = avrg_curve(bw_vancs);
     /*reject_bad_vancs(bw_vancs, avrg_bw, 2 * crit_dev);
     avrg_bw = avrg_curve(bw_vancs);*/
     reject_bad_vancs(bw_vancs, avrg_bw, crit_dev);
