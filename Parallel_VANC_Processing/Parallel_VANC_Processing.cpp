@@ -17,6 +17,32 @@
 #define EMPTY_VANC -1000
 using namespace std;
 
+const std::string MAIN_FOLDER = "C:/Users/Tunnel Noise/Desktop/STM/";
+const std::string SETTINGS_FOLDER = "Settings/";
+const std::string SESSION_FILE_NAME = SETTINGS_FOLDER + "SESSION_DATA.txt";
+const std::string VANC_LIST_NAME = "\\vac_list.txt";
+
+inline string ReadSessionDirectory()
+{
+    ifstream file;
+    string tmp1, tmp2,ans;
+    file.open(MAIN_FOLDER + SESSION_FILE_NAME, std::ios::in);
+    file >> tmp1;
+    file >> tmp2;
+    ans = tmp1 + " " + tmp2;
+    file.close();
+    return ans;
+}
+inline void AddFileToSession(string filename, string path = VANC_LIST_NAME )
+{
+    string session_folder = ReadSessionDirectory();
+    cout << "Filename " << filename << " added to session path " << session_folder + path << endl;
+    ofstream list;
+    list.open(session_folder + path, std::ios_base::app);
+    list << filename << endl;
+    list.close();
+}
+
 inline float avrg(vector<float>& vec, int start, int len) {
     //cout << reduce(vec.begin() + start, vec.begin() + start + len) / len << endl;
     return (reduce(vec.begin() + start, vec.begin() + start + len) / len);
@@ -321,12 +347,12 @@ inline pair<vector<vector<float>>, vector<vector<float>>> process_vancs(vector<v
         , fw_vancs.size(), bw_vancs.size());
     return make_pair(avrg_fw, avrg_bw);
 }
-inline void print_avrg_VANCS(pair<vector<vector<vector<float>>>, vector<vector<vector<float>>>>& VANCS, int p_num, string path) {
+inline void print_avrg_VANCS(pair<vector<vector<vector<float>>>, vector<vector<vector<float>>>>& VANCS, int p_num, int tm,  string path) {
     auto avrg_fw = avrg_interpl_curve(VANCS.first, p_num);
     auto avrg_bw = avrg_interpl_curve(VANCS.second, p_num);
     ofstream  fw_vanc, bw_vanc;
-    fw_vanc.open(path + "fw_vanc_" + to_string(p_num) + ".dat");
-    bw_vanc.open(path + "bw_vanc_" + to_string(p_num) + ".dat");
+    fw_vanc.open(path + "VANC_FW_P" + to_string(p_num) + "_S" + to_string(tm) + ".dat");
+    bw_vanc.open(path + "VANC_BW_P" + to_string(p_num) + "_S" + to_string(tm) + ".dat");
     for (int i = 0; i < avrg_fw[0].size(); i++) {
         for (int k = 0; k < 3; k++) {
             fw_vanc << avrg_fw[k][i] << "  ";
@@ -335,6 +361,7 @@ inline void print_avrg_VANCS(pair<vector<vector<vector<float>>>, vector<vector<v
         fw_vanc << endl;
         bw_vanc << endl;
     }
+    AddFileToSession(path + "VANC_FW_P" + to_string(p_num) + "_S" + to_string(tm) + ".dat");
 }
 
 
@@ -351,7 +378,7 @@ int main()
     cout << "!!!Чтобы выбрать дефолтные значения вводите 0!!!!" << endl;
     
     int start = 2;
-    int stop =  2000;
+    int stop =  100;
     int phase_shift_cur = 11;
     int phase_shift_n = 7;
     int p_num =  100;
@@ -467,7 +494,7 @@ int main()
 
     auto VANCS = make_pair(fw_vancs, bw_vancs);
     
-    print_avrg_VANCS(VANCS, p_num, path);
+    print_avrg_VANCS(VANCS, p_num, 2 * (stop - start), path);
     std::cout << "Done! Total time, s: " << total_tmr.get_full_interval() / 1000000;
     getchar(); getchar();
     
