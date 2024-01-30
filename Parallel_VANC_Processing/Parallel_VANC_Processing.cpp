@@ -19,9 +19,21 @@ using namespace std;
 
 const std::string MAIN_FOLDER = "C:/Users/Tunnel Noise/Desktop/STM/";
 const std::string SETTINGS_FOLDER = "Settings/";
+const std::string LAST_VANC_FILE_NAME = SETTINGS_FOLDER + "LAST_VANC.txt";
 const std::string SESSION_FILE_NAME = SETTINGS_FOLDER + "SESSION_DATA.txt";
 const std::string VANC_LIST_NAME = "\\vac_list.txt";
-
+const std::string PARAM_FILE_NAME= "VAC_PROCESSING.txt";
+inline string ReadLastVANCDiretory()
+{
+    ifstream file;
+    string tmp1, tmp2, ans;
+    file.open(MAIN_FOLDER + LAST_VANC_FILE_NAME, std::ios::in);
+    file >> tmp1;
+    file >> tmp2;
+    ans = tmp1 + " " + tmp2;
+    file.close();
+    return ans;
+}
 inline string ReadSessionDirectory()
 {
     ifstream file;
@@ -384,8 +396,8 @@ int main()
     int p_num =  100;
     float crit_dev = 0.1;
     float freq = 111.111;
-    string path = "C:/Users/Tunnel Noise/Desktop/STM/scans/07.12.2023/17_55/";
-   // string path = "C:/Users/Tunnel Noise/Desktop/STM/scans/10.11.2023/18_49/";
+    string path = ReadLastVANCDiretory();
+    cout << path << endl;
     float input_ = 0;
     cout << "Введите номер первой кривой (default = " << start <<"):" << endl;
 
@@ -396,9 +408,9 @@ int main()
    
     cin >> input_;
     if (input_ != 0) stop = input_;
-    //cout << "Введите максимальное количество точек в файле:" << endl;
+
     int cnt = 4000000;
-    //cin >> cnt;
+
 
     cout << "Введите сдвиг фазы напряжения, в точках (default = " << phase_shift_cur << "):" << endl;
 
