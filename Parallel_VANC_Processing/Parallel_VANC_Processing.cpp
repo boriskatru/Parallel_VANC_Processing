@@ -460,9 +460,7 @@ int main()
     /*reject_bad_vancs(fw_vancs, avrg_fw, 2 * crit_dev);
     avrg_fw = avrg_curve(fw_vancs);*/
     reject_bad_vancs(fw_vancs, avrg_fw, crit_dev);
-
-    /*reject_bad_vancs(bw_vancs, avrg_bw, 2 * crit_dev);
-    avrg_bw = avrg_curve(bw_vancs);*/
+    auto avrg_bw = avrg_curve(bw_vancs);
     reject_bad_vancs(bw_vancs, avrg_bw, crit_dev);
 
 
