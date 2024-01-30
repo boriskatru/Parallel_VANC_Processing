@@ -12,9 +12,9 @@
 #include <windows.h>
 #include "wait_bh.h"
 
-#define THREADS 2
+#define THREADS 3
 #define PI 3.14159
-
+#define EMPTY_VANC -1000
 using namespace std;
 
 inline float avrg(vector<float>& vec, int start, int len) {
@@ -62,6 +62,27 @@ inline pair<int, float> find_nearest(vector<float>& vec, float val) {
     }
     return make_pair(pos, dev);
 }
+
+inline pair<int, int> find_two_nearest(vector<float>& vec, float val) {
+    int pos1 = 0, pos2 = 0;
+    float dev = DBL_MAX;
+    int size = vec.size();
+    for (int i = 0; i < size; i++) {
+        if (abs(vec[i] - val) < abs(dev)) {
+            dev = vec[i] - val; 
+            pos1 = i;
+        }       
+    }
+    for (int i = 0; i < size; i++) {
+        if ((abs(vec[i] - val) < abs(dev)) && (i != pos1)) {            
+            dev = vec[i] - val;
+            pos2 = i;
+        }
+
+    }
+    return make_pair(pos1, pos2);
+}
+
 inline  vector<vector<float>>  decimate_vanc(vector<vector<float>>& data, int p_num) {
     vector<vector<float>>  data_new(3, vector<float>(p_num, 0));
     int step = data[0].size() / p_num;
@@ -99,6 +120,10 @@ inline  vector<vector<float>>  equalize_vanc_step(vector<vector<float>>& data, i
 
 inline vector<vector<float>> avrg_curve(vector<vector<vector<float>>>& data) {
     int VAC_cnt = data.size();
+    if (VAC_cnt == 0) { 
+        vector<vector<float>> null;
+        return null;
+    }
     int VAC_size = data[0][0].size();
     vector<vector<float>> avrg_vac(3, vector<float>(VAC_size, 0));
     for (int k = 0; k < VAC_size; k++) {
@@ -117,6 +142,7 @@ inline vector<vector<float>> avrg_curve(vector<vector<vector<float>>>& data) {
 
 inline float interpolate(vector<vector<float>>& vac, float target, int channel = 1) {
     auto nearest = find_nearest(vac[0], target);
+    
     int n_max, n_min;
     if (nearest.second == 0) return vac[channel][nearest.first];
     if (nearest.second > 0) {
@@ -131,8 +157,15 @@ inline float interpolate(vector<vector<float>>& vac, float target, int channel =
     float step= vac[0][n_max]- vac[0][n_min];
     //cout << step << "  " << dev << endl;
     if (step!=0)
-        return (dev * vac[channel][n_max] + (step - dev) * vac[channel][n_min]) / 2 / step;
+        return (dev * vac[channel][n_max] + (step - dev) * vac[channel][n_min])  / step;
     else return (vac[channel][n_max] +  vac[channel][n_min]) / 2 ;
+   /* auto nearests = find_two_nearest(vac[0], target);
+    float step = vac[0][nearests.first] - vac[0][nearests.second];
+    float dev = target - vac[0][nearests.first];
+    if (step != 0)
+        return (dev * vac[channel][nearests.first] + (step - dev) * vac[channel][nearests.second])  / step;
+    else return (vac[channel][nearests.first] +  vac[channel][nearests.second]) / 2 ;*/
+
 }
 
 
@@ -178,22 +211,25 @@ inline vector<vector<float>> avrg_interpl_curve(vector<vector<vector<float>>>& d
 inline float mean_sq_deviation(vector<vector<float>>& vac, vector<vector<float>>& ref) {
 
     int VAC_size = ref[0].size();
+    
     float deviation = 0;
     float tmp = 0;
     for (int k = 0; k < VAC_size; k++) {
         tmp = interpolate(vac, ref[0][k]) - ref[1][k];
-        deviation += tmp * tmp;
+        deviation += tmp * tmp;       
     }
-    return deviation/ VAC_size;
+    return (deviation / VAC_size);
 }
 inline int reject_bad_vancs(vector<vector<vector<float>>>& vancs, vector<vector<float>>& ref, float crit_dev) {
     auto iter= vancs.begin();
     int i = 0;
+    
     while (iter != vancs.end()) {
-
+        //cout << i << "   :  " << mean_sq_deviation(*iter, ref) << endl;
         if (mean_sq_deviation(*iter, ref) > crit_dev) {
             vancs.erase(iter); 
             i++;
+            
         }
         else {
             iter++;
@@ -204,16 +240,35 @@ inline int reject_bad_vancs(vector<vector<vector<float>>>& vancs, vector<vector<
     return i;
 }
 inline pair<vector<vector<float>>, vector<vector<float>>> process_vancs(vector<vector<float>>& data, float crit_dev, int phase_shift_cur = 20, int phase_shift_n = 15, int period = 1000, int p_num = 100, int VAC_num = 1, Timer& tmr = *new Timer) {
-    int min_1pos = local_min(data[0], 0, 9 * period / 10);
+    
+    int VAC_cnt = floor((data[0].size()) / period);
+
+    vector<vector<float>> tmp(3, vector<float>(period, 0));
+
+    vector<vector<vector<float>>> tmp_vancs(VAC_cnt, vector<vector<float>>(3, vector<float>(period, 0)));
+    for (int i = 0; i < VAC_cnt; i++) {
+        for (int k = 0; k < period; k++) {
+            tmp[0][k] = data[0][period * i + k];
+            tmp[1][k] = data[1][period * i + k];            
+        }
+        tmp_vancs[i] = tmp;
+    }
+    vector<vector<float>>avrg_tmp = avrg_curve(tmp_vancs);
+    //reject_bad_vancs(tmp_vancs, avrg_tmp, crit_dev);
+    //avrg_tmp = avrg_curve(tmp_vancs);
+    //reject_bad_vancs(tmp_vancs, avrg_tmp, crit_dev);
+    //avrg_tmp = avrg_curve(tmp_vancs);
+
+    int min_1pos = local_min(avrg_tmp[0], 0, 9 * period / 10);
     if (min_1pos == 0) min_1pos = period;
-    int max_1pos = local_max(data[0], 0, 9 * period / 10);
+    int max_1pos = local_max(avrg_tmp[0], 0, 9 * period / 10);
     if (max_1pos == 0) max_1pos = period;
     //cout << min_1pos << endl << max_1pos << endl;
     int start = min(min_1pos, max_1pos);
     bool fw_first = min_1pos < max_1pos;
-    printf(" %i thread.  Start: %i      Start val: %f \n",  omp_get_thread_num(), start, data[0][start]);
+    printf(" Start: %i      Start val: %f \n", start, data[0][start]);
 
-    int VAC_cnt = floor((data[0].size() - start) / period);
+    VAC_cnt = floor((data[0].size() - start) / period);
     vector<vector<float>> bw_tmp(3, vector<float>(period / 2, 0));
     vector<vector<float>> fw_tmp(3, vector<float>(period / 2, 0));
     vector<vector<vector<float>>> bw_vancs(VAC_cnt, vector<vector<float>>(3, vector<float>(p_num, 0)));
@@ -242,35 +297,36 @@ inline pair<vector<vector<float>>, vector<vector<float>>> process_vancs(vector<v
 
     auto avrg_fw = avrg_curve(fw_vancs);
     auto avrg_bw = avrg_curve(bw_vancs);
-
-
-
-
-
-    std::cout <<"Start fw_bw deviation: " << mean_sq_deviation(avrg_bw, avrg_fw) << endl;
-
+ 
+    //std::cout <<"Start fw_bw deviation: " << mean_sq_deviation(avrg_bw, avrg_fw) << endl;
     /*reject_bad_vancs(fw_vancs, avrg_fw, 2 * crit_dev);
     reject_bad_vancs(bw_vancs, avrg_bw, 2 * crit_dev);
-
     avrg_fw = avrg_curve(fw_vancs);
     avrg_bw = avrg_curve(bw_vancs);*/
 
-    reject_bad_vancs(fw_vancs, avrg_fw, crit_dev);
-    reject_bad_vancs(bw_vancs, avrg_bw, crit_dev);
-   
+    reject_bad_vancs(fw_vancs, avrg_fw, crit_dev / 5);
+    reject_bad_vancs(bw_vancs, avrg_bw, crit_dev / 5);
+
+    //cout << "bad vancs rejected" << endl;
+
     avrg_fw = avrg_curve(fw_vancs);
     avrg_bw = avrg_curve(bw_vancs);
-    std::cout << "Finish fw_bw deviation: " << mean_sq_deviation(avrg_bw, avrg_fw) << endl;
+
+    if ((avrg_fw.size() == 0) || (avrg_bw.size() == 0)) {
+        printf("%i VAC done by thread %i. Time per file %f s; !!!!! ALL VANCS REJECTED !!!!\n", VAC_num, omp_get_thread_num(), tmr.get_loop_interval() / 1000000);
+        return make_pair(vector<vector<float>> (3, vector<float>(period / 2, EMPTY_VANC)) , vector<vector<float>>(3, vector<float>(period / 2, EMPTY_VANC)));
+    }   
+    std::cout << "Finish FW/BW deviation: " << mean_sq_deviation(avrg_bw, avrg_fw) << endl;
     printf("%i VAC done by thread %i. Time per file %f s   FW count: %i    BW count: %i\n", VAC_num, omp_get_thread_num(), tmr.get_loop_interval() / 1000000
         , fw_vancs.size(), bw_vancs.size());
     return make_pair(avrg_fw, avrg_bw);
 }
-inline void print_avrg_VANCS(pair<vector<vector<vector<float>>>, vector<vector<vector<float>>>>& VANCS, int p_num) {
+inline void print_avrg_VANCS(pair<vector<vector<vector<float>>>, vector<vector<vector<float>>>>& VANCS, int p_num, string path) {
     auto avrg_fw = avrg_interpl_curve(VANCS.first, p_num);
     auto avrg_bw = avrg_interpl_curve(VANCS.second, p_num);
     ofstream  fw_vanc, bw_vanc;
-    fw_vanc.open("fw_vanc_" + to_string(p_num) + ".dat");
-    bw_vanc.open("bw_vanc_" + to_string(p_num) + ".dat");
+    fw_vanc.open(path + "fw_vanc_" + to_string(p_num) + ".dat");
+    bw_vanc.open(path + "bw_vanc_" + to_string(p_num) + ".dat");
     for (int i = 0; i < avrg_fw[0].size(); i++) {
         for (int k = 0; k < 3; k++) {
             fw_vanc << avrg_fw[k][i] << "  ";
@@ -292,47 +348,62 @@ int main()
     SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
     SetThreadPriority(GetCurrentProcess(), THREAD_PRIORITY_TIME_CRITICAL);
     cout << GetPriorityClass(GetCurrentProcess()) << endl;
+    cout << "!!!Чтобы выбрать дефолтные значения вводите 0!!!!" << endl;
+    
+    int start = 2;
+    int stop =  2000;
+    int phase_shift_cur = 11;
+    int phase_shift_n = 7;
+    int p_num =  100;
+    float crit_dev = 0.1;
+    float freq = 111.111;
+    string path = "C:/Users/Tunnel Noise/Desktop/STM/scans/07.12.2023/17_55/";
+   // string path = "C:/Users/Tunnel Noise/Desktop/STM/scans/10.11.2023/18_49/";
+    float input_ = 0;
+    cout << "Введите номер первой кривой (default = " << start <<"):" << endl;
 
-    cout << "Введите номер первой кривой:" << endl;
-    int start = 1;
-    cin >> start;
+    cin >> input_;
+    if (input_ != 0) start = input_;
 
-    cout << "Введите номер последней кривой:" << endl;
-    int stop =10;
-    cin >> stop;
-
+    cout << "Введите номер последней кривой (default = " << stop << "):" << endl;
+   
+    cin >> input_;
+    if (input_ != 0) stop = input_;
     //cout << "Введите максимальное количество точек в файле:" << endl;
-    int cnt = 2000000;
+    int cnt = 4000000;
     //cin >> cnt;
 
-    cout << "Введите сдвиг фазы напряжения, в точках:" << endl;
-    int phase_shift_cur = 13;
-    cin >> phase_shift_cur;
-    if (phase_shift_cur == 0) phase_shift_cur = 12;
+    cout << "Введите сдвиг фазы напряжения, в точках (default = " << phase_shift_cur << "):" << endl;
 
-    cout << "Введите сдвиг фазы шума, в точках:" << endl;
-    int phase_shift_n = 7;
-    cin >> phase_shift_n;
-    if (phase_shift_n == 0)  phase_shift_n = 7;
+    cin >> input_;
+    if (input_ != 0) phase_shift_cur = input_;
 
-    cout << "Введите желаемое количество точек на  обработанной кривой:" << endl;
-    int p_num = 50;
-    cin >> p_num;
-    if (p_num == 0)  p_num = 50;
+    cout << "Введите сдвиг фазы шума, в точках (default = " << phase_shift_n << "):" << endl;
 
-    cout << "Введите критическое отклонение:" << endl;
-    float crit_dev = 0.08;
-    cin >> crit_dev;
-    if (crit_dev == 0)  crit_dev = 0.08;
+    cin >> input_;
+    if (input_ != 0)  phase_shift_n = input_;
 
-    cout << "Введите частоту баяса:" << endl;
-    int freq = 250;
-    cin >> freq;
-    if (freq == 0)  freq = 250;
+    cout << "Введите желаемое количество точек на  обработанной кривой (default = " << p_num << "):" << endl;
+ 
+    cin >> input_;
+    if (input_ != 0)  p_num = input_;
 
-    int period = 500000/freq;
+    cout << "Введите критическое отклонение (default = " << crit_dev << "):" << endl;
+
+    cin >> input_;
+    if (input_ != 0)  crit_dev = input_;
+
+    cout << "Введите частоту баяса (default = " << freq << "):" << endl;
+
+    cin >> input_;
+    if (input_ != 0)  freq = input_;
+
+    int period = 333333/freq;
+    cout << "PERIOD = " << period << endl;
     //string filename = "C:/Users/Tunnel Noise/Desktop/STM/scans/11.04.2023/18_35/VANC_";
-    string filename = "VANC_";
+    //period = 1000;
+    //path = "";
+    string filename = path + "VANC_";
     string filetype = ".bin";
     vector<vector<vector<float>>> fw_vancs, bw_vancs;
     Timer total_tmr;
@@ -342,18 +413,16 @@ int main()
     {
 
         Timer tmr;
-        tmr.set_to_zero();     
-                
+        tmr.set_to_zero();                     
 
         FILE* fileV;
         FILE* fileA;
         FILE* fileN;
-
-        cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+        
         cout << filename + to_string(i)  + filetype << endl;
-        cout << "open voltage file: " << fopen_s(&fileV, (filename + to_string(i) + "V" + filetype).data(), "rb") << endl;
-        cout << "open current file: " << fopen_s(&fileA, (filename + to_string(i) + "A" + filetype).data(), "rb") << endl;
-        cout << "open noise file: " << fopen_s(&fileN, (filename + to_string(i) + "N" + filetype).data(), "rb") << endl;
+        fopen_s(&fileV, (filename + to_string(i) + "V" + filetype).data(), "rb") ;
+        fopen_s(&fileA, (filename + to_string(i) + "A" + filetype).data(), "rb");
+        fopen_s(&fileN, (filename + to_string(i) + "N" + filetype).data(), "rb");
     
         std::vector<float> Vbuf(cnt); // underlying storage of std::vector is also an array
         std::vector<float> Abuf(cnt); // underlying storage of std::vector is also an array
@@ -362,7 +431,7 @@ int main()
         std::fread(Abuf.data(), sizeof Abuf[0], Abuf.size(), fileA);
         std::fread(Nbuf.data(), sizeof Nbuf[0], Nbuf.size(), fileN);
         vector<vector<float> > data(3, vector<float>(size, 0));
-        cout << "file length: " << size << endl;
+        printf("!!!!!!!!!!!!!!!!! %i thread.  VANC num %i  !!!!!!!!!!!!!!!!\n file length: %i \n", omp_get_thread_num(), i, size);     
         for (int i = 0; i < size; i++) {
             data[0][i] = Vbuf[i];
             data[1][i] = Abuf[i];
@@ -371,16 +440,22 @@ int main()
         fclose(fileV);
         fclose(fileA);
         fclose(fileN);
+        
 
-        auto VANCS = process_vancs(data, crit_dev, phase_shift_cur, phase_shift_n, period, 4 * p_num, i, tmr);
+        auto VANCS = process_vancs(data, crit_dev, phase_shift_cur, phase_shift_n, period, 2 * p_num, i, tmr);
         //system("pause");
-       
-        fw_vancs.insert(fw_vancs.end(), VANCS.first);
-        bw_vancs.insert(bw_vancs.end(), VANCS.second);
+        //cout << "!!!123123234278952175d24823h7d721314d79h7s39!" << endl;
+        if (VANCS.first[0][0] != EMPTY_VANC) {
+            fw_vancs.insert(fw_vancs.end(), VANCS.first);
+            bw_vancs.insert(bw_vancs.end(), VANCS.second);
+        }
+      
       
     }
-    auto avrg_fw = avrg_interpl_curve(fw_vancs, 4 * p_num);
-    auto avrg_bw = avrg_interpl_curve(bw_vancs, 4 * p_num);
+    cout << "FORWARD:" << endl;
+    auto avrg_fw = avrg_interpl_curve(fw_vancs, 2 * p_num);
+    cout << "BACKWARD:" << endl;
+    auto avrg_bw = avrg_interpl_curve(bw_vancs, 2 * p_num);
     //auto avrg_fw = avrg_curve(fw_vancs);
     /*reject_bad_vancs(fw_vancs, avrg_fw, 2 * crit_dev);
     avrg_fw = avrg_curve(fw_vancs);*/
@@ -393,7 +468,7 @@ int main()
 
     auto VANCS = make_pair(fw_vancs, bw_vancs);
     
-    print_avrg_VANCS(VANCS, p_num);
+    print_avrg_VANCS(VANCS, p_num, path);
     std::cout << "Done! Total time, s: " << total_tmr.get_full_interval() / 1000000;
     getchar(); getchar();
     
