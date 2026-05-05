@@ -12,7 +12,7 @@
 #include <windows.h>
 #include "wait_bh.h"
 
-#define THREADS 3
+#define THREADS 4
 #define PI 3.14159
 #define EMPTY_VANC -1000
 using namespace std;
@@ -363,8 +363,8 @@ inline void print_avrg_VANCS(pair<vector<vector<vector<float>>>, vector<vector<v
     auto avrg_fw = avrg_interpl_curve(VANCS.first, p_num);
     auto avrg_bw = avrg_interpl_curve(VANCS.second, p_num);
     ofstream  fw_vanc, bw_vanc;
-    fw_vanc.open(path + "VANC_FW_P" + to_string(p_num) + "_S" + to_string(tm) + ".dat");
-    bw_vanc.open(path + "VANC_BW_P" + to_string(p_num) + "_S" + to_string(tm) + ".dat");
+    fw_vanc.open(path + "/VANC_FW_P" + to_string(p_num) + "_S" + to_string(tm) + ".dat");
+    bw_vanc.open(path + "/VANC_BW_P" + to_string(p_num) + "_S" + to_string(tm) + ".dat");
     for (int i = 0; i < avrg_fw[0].size(); i++) {
         for (int k = 0; k < 3; k++) {
             fw_vanc << avrg_fw[k][i] << "  ";
@@ -373,7 +373,7 @@ inline void print_avrg_VANCS(pair<vector<vector<vector<float>>>, vector<vector<v
         fw_vanc << endl;
         bw_vanc << endl;
     }
-    AddFileToSession(path + "VANC_FW_P" + to_string(p_num) + "_S" + to_string(tm) + ".dat");
+    AddFileToSession(path + "/VANC_FW_P" + to_string(p_num) + "_S" + to_string(tm) + ".dat");
 }
 
 
@@ -386,67 +386,98 @@ int main()
     setlocale(LC_ALL, "Russian");
     SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
     SetThreadPriority(GetCurrentProcess(), THREAD_PRIORITY_TIME_CRITICAL);
-    cout << GetPriorityClass(GetCurrentProcess()) << endl;
-    cout << "!!!Чтобы выбрать дефолтные значения вводите 0!!!!" << endl;
+    std::cout << GetPriorityClass(GetCurrentProcess()) << endl;
+    std::cout << "!!!Чтобы выбрать дефолтные значения вводите 0!!!!" << endl;
     
-    int start = 2;
-    int stop =  100;
+    int start = 5;
+    int stop =  400;
     int phase_shift_cur = 11;
     int phase_shift_n = 7;
-    int p_num =  100;
-    float crit_dev = 0.1;
+    int p_num =  200;
+    float crit_dev = 0.04;
     float freq = 111.111;
     string path = ReadLastVANCDiretory();
-    cout << path << endl;
+    std::cout << path << endl;
     float input_ = 0;
-    cout << "Введите номер первой кривой (default = " << start <<"):" << endl;
-
-    cin >> input_;
-    if (input_ != 0) start = input_;
-
-    cout << "Введите номер последней кривой (default = " << stop << "):" << endl;
-   
-    cin >> input_;
-    if (input_ != 0) stop = input_;
 
     int cnt = 4000000;
-
-
-    cout << "Введите сдвиг фазы напряжения, в точках (default = " << phase_shift_cur << "):" << endl;
+    std::cout << "Использовать путь к папке по умолчанию? (да = 1, нет = 0)" << endl;
 
     cin >> input_;
-    if (input_ != 0) phase_shift_cur = input_;
+    if (input_ == 0){
+        std::cout << "Введите путь к папке (пример \"11.04.2023/18_35/\"):" << endl;
+        
+        std::getline(std::cin, path);
+        cin >> path;
+        path = "C:/Users/Tunnel Noise/Desktop/STM/scans/"+path;
+    }
+    std::cout << path << endl;
 
-    cout << "Введите сдвиг фазы шума, в точках (default = " << phase_shift_n << "):" << endl;
-
-    cin >> input_;
-    if (input_ != 0)  phase_shift_n = input_;
-
-    cout << "Введите желаемое количество точек на  обработанной кривой (default = " << p_num << "):" << endl;
- 
-    cin >> input_;
-    if (input_ != 0)  p_num = input_;
-
-    cout << "Введите критическое отклонение (default = " << crit_dev << "):" << endl;
+    std::cout << "Использовать стандартные настройки? (да = 1, нет = 0)" << endl;
 
     cin >> input_;
-    if (input_ != 0)  crit_dev = input_;
+    if (input_ == 0)
+    {
 
-    cout << "Введите частоту баяса (default = " << freq << "):" << endl;
+        std::cout << "Введите номер первой кривой (default = " << start << "):" << endl;
 
-    cin >> input_;
-    if (input_ != 0)  freq = input_;
+        cin >> input_;
+        if (input_ != 0) start = input_;
+
+        std::cout << "Введите номер последней кривой (default <= " << stop << "):" << endl;
+
+        cin >> input_;
+        if (input_ != 0) stop = input_;
+
+
+        std::cout << "Введите сдвиг фазы напряжения, в точках (default = " << phase_shift_cur << "):" << endl;
+
+        cin >> input_;
+        if (input_ != 0) phase_shift_cur = input_;
+
+        std::cout << "Введите сдвиг фазы шума, в точках (default = " << phase_shift_n << "):" << endl;
+
+        cin >> input_;
+        if (input_ != 0)  phase_shift_n = input_;
+
+        std::cout << "Введите желаемое количество точек на  обработанной кривой (default = " << p_num << "):" << endl;
+
+        cin >> input_;
+        if (input_ != 0)  p_num = input_;
+
+        std::cout << "Введите критическое отклонение (default = " << crit_dev << "):" << endl;
+
+        cin >> input_;
+        if (input_ != 0)  crit_dev = input_;
+
+        std::cout << "Введите частоту баяса (default = " << freq << "):" << endl;
+
+        cin >> input_;
+        if (input_ != 0)  freq = input_;
+
+    }
+
+
 
     int period = 333333/freq;
-    cout << "PERIOD = " << period << endl;
+    std::cout << "PERIOD = " << period << endl;
     //string filename = "C:/Users/Tunnel Noise/Desktop/STM/scans/11.04.2023/18_35/VANC_";
     //period = 1000;
     //path = "";
-    string filename = path + "VANC_";
+    string filename = path + "/VANC_";
     string filetype = ".bin";
     vector<vector<vector<float>>> fw_vancs, bw_vancs;
     Timer total_tmr;
     total_tmr.set_to_zero();
+
+    for (int i = start; i < stop; i++)
+    {
+        if (!std::filesystem::exists(filename + to_string(i) + "V" + filetype))
+        {
+            stop = i - 1;
+        }
+    }
+
 #pragma omp parallel for 
     for (int i = start; i < stop; i++)
     {
@@ -458,7 +489,7 @@ int main()
         FILE* fileA;
         FILE* fileN;
         
-        cout << filename + to_string(i)  + filetype << endl;
+        std::cout << filename + to_string(i)  + filetype << endl;
         fopen_s(&fileV, (filename + to_string(i) + "V" + filetype).data(), "rb") ;
         fopen_s(&fileA, (filename + to_string(i) + "A" + filetype).data(), "rb");
         fopen_s(&fileN, (filename + to_string(i) + "N" + filetype).data(), "rb");
@@ -491,17 +522,17 @@ int main()
       
       
     }
-    cout << "FORWARD:" << endl;
+    std::cout << "FORWARD:" << endl;
     auto avrg_fw = avrg_interpl_curve(fw_vancs, 2 * p_num);
-    cout << "BACKWARD:" << endl;
+    std::cout << "BACKWARD:" << endl;
     auto avrg_bw = avrg_interpl_curve(bw_vancs, 2 * p_num);
     //auto avrg_fw = avrg_curve(fw_vancs);
     /*reject_bad_vancs(fw_vancs, avrg_fw, 2 * crit_dev);
     avrg_fw = avrg_curve(fw_vancs);*/
-    reject_bad_vancs(fw_vancs, avrg_fw, crit_dev);
+    reject_bad_vancs(fw_vancs, avrg_fw, crit_dev/100);
     /*reject_bad_vancs(bw_vancs, avrg_bw, 2 * crit_dev);
     avrg_bw = avrg_curve(bw_vancs);*/
-    reject_bad_vancs(bw_vancs, avrg_bw, crit_dev);
+    reject_bad_vancs(bw_vancs, avrg_bw, crit_dev/100);
 
 
     auto VANCS = make_pair(fw_vancs, bw_vancs);
